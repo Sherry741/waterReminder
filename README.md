@@ -9,9 +9,10 @@ Mac 桌面悬浮喝水提醒。窗口始终浮在桌面上，到点变色、出�
 1. 下载仓库里的 [release/waterReminder-1.0.dmg](https://github.com/Sherry741/waterReminder/raw/main/release/waterReminder-1.0.dmg)
 2. 双击打开 DMG
 3. 双击 **安装并打开**（不要直接双击 `.app`）
-4. 应用打开后，按引导去系统设置允许打开，并打开通知权限
+4. <span style="color:#d1242f"><strong>应用打开后，按引导去系统设置允许打开，并打开通知权限</strong></span>
 
-当前是本机临时签名，没有苹果开发者证书。从浏览器下载后，系统会先拦截未公证的应用。用「安装并打开」会去掉隔离标记；如果仍然被拦，到「系统设置 → 隐私与安全性」拉到下面点「仍要打开」。
+> [!CAUTION]
+> <span style="color:#d1242f">当前是本机临时签名，没有苹果开发者证书。从浏览器下载后，系统会先拦截未公证的应用。用「安装并打开」会去掉隔离标记；如果仍然被拦，到「系统设置 → 隐私与安全性」拉到下面点「仍要打开」。</span>
 
 最低系统：macOS 14。当前安装包为 Apple Silicon（arm64）。
 
