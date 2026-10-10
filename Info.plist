@@ -8,6 +8,8 @@
     <string>waterReminder</string>
     <key>CFBundleExecutable</key>
     <string>WaterReminder</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>local.water.reminder</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -26,6 +28,8 @@
     <string>14.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>到点提醒你喝水时，需要发送通知。</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
 </dict>

@@ -15,8 +15,11 @@ swiftc -swift-version 5 -O -sdk "$SDK" \
   -target "${ARCH}-apple-macosx14.0" \
   -framework AppKit \
   -framework SwiftUI \
+  -framework UserNotifications \
   Sources/Theme.swift \
   Sources/AppModel.swift \
+  Sources/ReminderNotifier.swift \
+  Sources/OnboardingView.swift \
   Sources/SelfTest.swift \
   Sources/FloatingView.swift \
   Sources/SettingsView.swift \
@@ -27,5 +30,7 @@ swiftc -swift-version 5 -O -sdk "$SDK" \
   -o "$APP/Contents/MacOS/WaterReminder"
 
 cp Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 codesign --force --sign - "$APP"
+xattr -cr "$APP" || true
 echo "Built $(pwd)/$APP"

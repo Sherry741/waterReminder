@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var panel: WidgetPanel?
     private var settingsWindow: NSWindow?
     private var statsWindow: NSWindow?
+    private var onboardingWindow: NSWindow?
     private var statusItem: NSStatusItem?
     private var resizeBorder: ResizeBorderView?
 
@@ -36,11 +37,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.expandWidget()
             self?.panel?.orderFrontRegardless()
         }
-        model.onAlert = {
+        model.onAlert = { [weak self] in
             NSApp.requestUserAttention(.informationalRequest)
+            ReminderNotifier.shared.sendReminder(message: self?.model.reminderMessage ?? "该喝水啦")
         }
         model.onStatus = { [weak self] in
             self?.refreshStatusItem()
+        }
+
+        ReminderNotifier.shared.configure()
+        ReminderNotifier.shared.onOpen = { [weak self] in
+            self?.expandWidget()
+            self?.panel?.orderFrontRegardless()
+            NSApp.activate()
         }
 
         installDockIcon()
@@ -51,6 +60,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panel?.orderFrontRegardless()
         saveWidgetFrame()
         NSApp.activate()
+        if !UserDefaults.standard.bool(forKey: ReminderNotifier.onboardingKey) {
+            openOnboarding()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -301,6 +313,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settings.target = self
         appMenu.addItem(settings)
 
+        let permissions = NSMenuItem(title: "打开权限…", action: #selector(openOnboarding), keyEquivalent: "")
+        permissions.target = self
+        appMenu.addItem(permissions)
+
         let stats = NSMenuItem(title: "统计…", action: #selector(openStats), keyEquivalent: "s")
         stats.target = self
         appMenu.addItem(stats)
@@ -376,6 +392,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func showFloating() {
         expandWidget()
         panel?.orderFrontRegardless()
+    }
+
+    @objc private func openOnboarding() {
+        if onboardingWindow == nil {
+            onboardingWindow = makeAuxWindow(
+                title: "打开权限",
+                size: NSSize(width: 460, height: 420),
+                view: OnboardingView { [weak self] in
+                    self?.onboardingWindow?.close()
+                }
+            )
+        }
+        present(onboardingWindow)
     }
 
     @objc private func openSettings() {

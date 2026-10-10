@@ -87,6 +87,21 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
+                GroupBox("权限") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("如果双击打不开，或到点没有通知，到系统设置里打开权限。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            Button("允许打开应用") { SystemSettingsLink.openPrivacySecurity() }
+                            Button("通知权限") { SystemSettingsLink.openNotifications() }
+                        }
+                    }
+                    .padding(.top, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 GroupBox("饮水量") {
                     VStack(alignment: .leading, spacing: 8) {
                         Stepper(value: cupBinding, in: 50...2000, step: 50) {

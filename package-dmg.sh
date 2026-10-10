@@ -16,6 +16,15 @@ DMG="dist/${APP_NAME}-${VERSION}.dmg"
 rm -rf "$STAGE" "$RW_DMG" "$DMG"
 mkdir -p "$STAGE"
 ditto "dist/WaterReminder.app" "$STAGE/${APP_NAME}.app"
+xattr -cr "$STAGE/${APP_NAME}.app" || true
+cp "dmg-assets/安装并打开.command" "$STAGE/安装并打开.command"
+chmod +x "$STAGE/安装并打开.command"
+cat > "$STAGE/请先读我.txt" <<'EOF'
+请双击「安装并打开」，不要直接双击 waterReminder.app。
+
+安装脚本会把应用拷到「应用程序」，去掉浏览器带过来的隔离标记，然后打开。
+第一次打开后，按窗口提示去系统设置允许打开，并打开通知权限。
+EOF
 ln -s /Applications "$STAGE/Applications"
 
 hdiutil create \
