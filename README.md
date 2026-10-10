@@ -33,6 +33,12 @@ open dist/WaterReminder.app
 
 ## 使用方法
 
+<p>
+  <img src="docs/screenshots/widget.png" alt="悬浮窗" width="280">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/cup.png" alt="最小化水杯" width="120">
+</p>
+
 ### 悬浮窗
 
 - 拖动标题栏可移动，位置会记住
@@ -53,6 +59,8 @@ open dist/WaterReminder.app
 
 ### 设置
 
+<img src="docs/screenshots/settings.png" alt="提醒设置" width="420">
+
 点齿轮，或菜单栏里的「设置…」：
 
 - 提醒间隔（默认 45 分钟）
@@ -64,6 +72,8 @@ open dist/WaterReminder.app
 - **暂停提醒**：不再响，但仍可记账
 
 ### 统计
+
+<img src="docs/screenshots/stats.png" alt="喝水统计" width="420">
 
 点柱状图，或菜单栏里的「统计…」：
 
