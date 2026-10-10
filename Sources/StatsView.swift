@@ -1,15 +1,35 @@
 import SwiftUI
 
+private enum StatsRange: Int, CaseIterable, Identifiable {
+    case week = 7
+    case twoWeeks = 14
+    case month = 30
+    case threeMonths = 90
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .week: return "近一周"
+        case .twoWeeks: return "近两周"
+        case .month: return "近一月"
+        case .threeMonths: return "近三月"
+        }
+    }
+}
+
 struct StatsView: View {
     @EnvironmentObject private var model: AppModel
     @State private var extraMl = 250
+    @State private var range: StatsRange = .week
 
     private var theme: Color {
         Color(hex: model.settings.colorHex) ?? Color(red: 0.18, green: 0.61, blue: 1)
     }
 
-    private var days: [DayStat] { model.recentDays() }
+    private var days: [DayStat] { model.chartBuckets(lastDays: range.rawValue) }
     private var maxMl: Int { max(days.map(\.ml).max() ?? 0, 1) }
+    private var compactChart: Bool { range.rawValue > 14 }
 
     var body: some View {
         ScrollView {
@@ -41,11 +61,26 @@ struct StatsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("近 7 日")
-                        .font(.headline)
-                    Text(model.weekSummary())
+                    HStack {
+                        Text(range.title)
+                            .font(.headline)
+                        Spacer()
+                    }
+                    Picker("统计范围", selection: $range) {
+                        ForEach(StatsRange.allCases) { option in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    Text(model.rangeSummary(lastDays: range.rawValue))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if range == .threeMonths {
+                        Text("近三月按周汇总，柱顶日期是该周第一天。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                     chart
                 }
 
@@ -109,29 +144,49 @@ struct StatsView: View {
     }
 
     private var chart: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            ForEach(days) { day in
+        HStack(alignment: .bottom, spacing: compactChart ? 3 : 8) {
+            ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                 let isToday = Calendar.current.isDateInToday(day.id)
-                VStack(spacing: 4) {
-                    Text(day.ml > 0 ? "\(day.ml)" : " ")
-                        .font(.system(size: 9, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .frame(height: 12)
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                let showLabel = shouldShowLabel(index: index, day: day)
+                VStack(spacing: compactChart ? 2 : 4) {
+                    if !compactChart {
+                        Text(day.ml > 0 ? "\(day.ml)" : " ")
+                            .font(.system(size: 9, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .frame(height: 12)
+                    }
+                    RoundedRectangle(cornerRadius: compactChart ? 2 : 5, style: .continuous)
                         .fill(isToday ? theme : theme.opacity(0.38))
                         .frame(height: barHeight(day.ml))
-                    Text("\(day.count)次")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                    Text(day.label)
-                        .font(.system(size: 11, weight: isToday ? .bold : .regular))
+                        .help("\(day.label) · \(day.count) 次 · \(day.ml) ml")
+                    if !compactChart {
+                        Text("\(day.count)次")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(showLabel ? day.label : " ")
+                        .font(.system(size: compactChart ? 8 : 11, weight: isToday ? .bold : .regular))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                 }
                 .frame(maxWidth: .infinity)
             }
         }
         .frame(height: 168, alignment: .bottom)
+    }
+
+    private func shouldShowLabel(index: Int, day: DayStat) -> Bool {
+        if Calendar.current.isDateInToday(day.id) { return true }
+        switch range {
+        case .week, .twoWeeks:
+            return true
+        case .month:
+            return index % 5 == 0 || index == days.count - 1
+        case .threeMonths:
+            return index % 2 == 0 || index == days.count - 1
+        }
     }
 
     private func barHeight(_ ml: Int) -> CGFloat {

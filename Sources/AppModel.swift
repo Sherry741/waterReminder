@@ -266,6 +266,31 @@ final class AppModel: ObservableObject {
         return result
     }
 
+    /// 按 7 天一块汇总，从今天往前覆盖 `coveringDays` 天。
+    func recentWeeks(coveringDays: Int, now: Date = Date(), calendar: Calendar = .current) -> [DayStat] {
+        let today = calendar.startOfDay(for: now)
+        let weekCount = max(1, Int(ceil(Double(coveringDays) / 7.0)))
+        var result: [DayStat] = []
+        for weekIndex in 0..<weekCount {
+            let endOffset = (weekCount - 1 - weekIndex) * 7
+            let startOffset = endOffset + 6
+            guard let start = calendar.date(byAdding: .day, value: -startOffset, to: today),
+                  let end = calendar.date(byAdding: .day, value: 1 - endOffset, to: today) else { continue }
+            let items = drinks.filter { $0.date >= start && $0.date < end }
+            result.append(DayStat(
+                id: start,
+                label: Self.dayFormatter.string(from: start),
+                count: items.count,
+                ml: items.reduce(0) { $0 + $1.ml }
+            ))
+        }
+        return result
+    }
+
+    func chartBuckets(lastDays: Int, now: Date = Date()) -> [DayStat] {
+        lastDays > 31 ? recentWeeks(coveringDays: lastDays, now: now) : recentDays(lastDays, now: now)
+    }
+
     func summary(lastDays: Int, now: Date = Date()) -> (count: Int, ml: Int) {
         let days = recentDays(lastDays, now: now)
         return (days.reduce(0) { $0 + $1.count }, days.reduce(0) { $0 + $1.ml })
@@ -293,9 +318,14 @@ final class AppModel: ObservableObject {
     }
 
     func weekSummary(now: Date = Date()) -> String {
-        let total = summary(lastDays: 7, now: now)
-        let average = Double(total.count) / 7.0
-        return "近 7 日共 \(total.count) 次、\(total.ml) ml，日均 \(String(format: "%.1f", average)) 次"
+        rangeSummary(lastDays: 7, now: now)
+    }
+
+    func rangeSummary(lastDays: Int, now: Date = Date()) -> String {
+        let days = max(1, lastDays)
+        let total = summary(lastDays: days, now: now)
+        let average = Double(total.count) / Double(days)
+        return "近 \(days) 日共 \(total.count) 次、\(total.ml) ml，日均 \(String(format: "%.1f", average)) 次"
     }
 
     var yearSummary: String {

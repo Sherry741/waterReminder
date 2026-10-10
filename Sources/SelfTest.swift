@@ -48,6 +48,11 @@ enum SelfTest {
         check("week ml \(stats.summary(lastDays: 7).ml)", stats.summary(lastDays: 7).ml == 850)
         check("week count \(stats.summary(lastDays: 7).count)", stats.summary(lastDays: 7).count == 3)
         check("seven buckets", stats.recentDays().count == 7)
+        check("month buckets", stats.recentDays(30).count == 30)
+        check("quarter weeks", stats.recentWeeks(coveringDays: 90).count == 13)
+        check("chart month daily", stats.chartBuckets(lastDays: 30).count == 30)
+        check("chart quarter weekly", stats.chartBuckets(lastDays: 90).count == 13)
+        check("range text", stats.rangeSummary(lastDays: 30).contains("近 30 日"))
         check("archive keeps older", stats.drinks.contains { $0.ml == 50 })
         check("goal capped", abs(stats.goalProgress - min(1, 750.0 / 2000.0)) < 0.001)
         if let todayID = stats.drinksToday().first?.id {
