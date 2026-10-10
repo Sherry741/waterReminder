@@ -6,7 +6,7 @@ Mac 桌面悬浮喝水提醒。窗口始终浮在桌面上，到点变色、出�
 
 ### 用 DMG 安装（推荐）
 
-1. 打开 [Releases](https://github.com/Sherry741/waterReminder/releases)，或使用本地打好的 `dist/waterReminder-1.0.dmg`
+1. 下载仓库里的 [release/waterReminder-1.0.dmg](https://github.com/Sherry741/waterReminder/raw/main/release/waterReminder-1.0.dmg)
 2. 双击打开 DMG
 3. 把 `waterReminder.app` 拖到 `Applications`
 4. 从启动台或「应用程序」里打开
@@ -28,7 +28,7 @@ open dist/WaterReminder.app
 ./package-dmg.sh
 ```
 
-完成后得到 `dist/waterReminder-1.0.dmg`。
+完成后得到 `dist/waterReminder-1.0.dmg`。需要放到仓库里时，把文件复制到 `release/` 再提交。
 
 ## 使用方法
 
