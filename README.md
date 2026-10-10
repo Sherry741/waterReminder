@@ -49,6 +49,8 @@ open dist/WaterReminder.app
 
 ### 提醒
 
+<img src="docs/screenshots/reminder.png" alt="到点提醒" width="280">
+
 到点后窗口变成你设的颜色，显示提示语并播放声音。可以：
 
 - **喝了**：记下这一杯，开始下一轮
