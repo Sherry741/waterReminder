@@ -133,6 +133,40 @@ enum SelfTest {
         remind.isReminding = true
         remind.logDrink(ml: 250)
         check("log clears reminder", remind.isReminding == false)
+        check("every sip celebrates", remind.celebration == .sip(ml: 250))
+
+        let prizeURL = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: prizeURL) }
+        let prize = AppModel(storeURL: prizeURL, startTimer: false)
+        check("bundled default bg", prize.rewardBackground != nil)
+        check("no custom file yet", prize.settings.rewardBackgroundFile == nil)
+        prize.settings.dailyGoalMl = 300
+        prize.settings.cupMl = 200
+        prize.soundHook = { _ in }
+        prize.logDrink(ml: 200)
+        check("plain drink celebrates", prize.celebration == .sip(ml: 200))
+        prize.clearCelebration()
+        prize.isReminding = true
+        prize.logDrink(ml: 150)
+        check("crossing goal", prize.celebration == .goal(ml: 150))
+        prize.clearCelebration()
+        check("clear celebration", prize.celebration == .none)
+        prize.logDrink(ml: 200)
+        check("another sip still celebrates", prize.celebration == .sip(ml: 200))
+
+        let imageURL = FileManager.default.temporaryDirectory.appendingPathComponent("reward-src.png")
+        let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=")
+        try? png?.write(to: imageURL)
+        check("set reward bg", prize.setRewardBackground(from: imageURL))
+        check("reward file", prize.settings.rewardBackgroundFile == "reward-bg.jpg")
+        check("reward image loaded", prize.rewardBackground != nil)
+        let reloadedBg = AppModel(storeURL: prizeURL, startTimer: false)
+        check("reward persists", reloadedBg.rewardBackground != nil)
+        reloadedBg.clearRewardBackground()
+        check("custom file cleared", reloadedBg.settings.rewardBackgroundFile == nil)
+        check("default reward remains", reloadedBg.rewardBackground != nil)
+        try? FileManager.default.removeItem(at: imageURL)
+        try? FileManager.default.removeItem(at: prizeURL.deletingLastPathComponent().appendingPathComponent("reward-bg.jpg"))
         check(
             "log reschedules",
             abs(remind.nextReminder.timeIntervalSince(remind.lastAck) - Double(remind.settings.intervalMinutes * 60)) < 1.5

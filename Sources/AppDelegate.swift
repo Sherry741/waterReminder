@@ -60,7 +60,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panel?.orderFrontRegardless()
         saveWidgetFrame()
         NSApp.activate()
-        if !UserDefaults.standard.bool(forKey: ReminderNotifier.onboardingKey) {
+        if CommandLine.arguments.contains("--preview-reward") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                self?.model.previewCelebration()
+            }
+        } else if CommandLine.arguments.contains("--open-settings") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                self?.openSettings()
+            }
+        } else if !UserDefaults.standard.bool(forKey: ReminderNotifier.onboardingKey) {
             openOnboarding()
         }
     }

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
@@ -102,6 +103,26 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
+                GroupBox("奖励背景") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .center, spacing: 10) {
+                            rewardPreview
+                            VStack(alignment: .leading, spacing: 6) {
+                                Button("选择图片…") { pickRewardImage() }
+                                Button("恢复默认") { model.clearRewardBackground() }
+                                    .disabled(!model.hasCustomRewardBackground)
+                                Button("预览奖励效果") { model.previewCelebration() }
+                            }
+                        }
+                        Text("记一杯时会铺在奖励动画后面。默认是内置背景，也可以换成自己的照片。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.top, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 GroupBox("饮水量") {
                     VStack(alignment: .leading, spacing: 8) {
                         Stepper(value: cupBinding, in: 50...2000, step: 50) {
@@ -171,6 +192,40 @@ struct SettingsView: View {
 
     private var goalBinding: Binding<Int> {
         Binding(get: { model.settings.dailyGoalMl }, set: { model.setGoal($0) })
+    }
+
+    private var rewardPreview: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(theme.opacity(0.35))
+            if let image = model.rewardBackground {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Text("默认背景")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 92, height: 64)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+        )
+    }
+
+    private func pickRewardImage() {
+        let panel = NSOpenPanel()
+        panel.title = "选择奖励背景"
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.png, .jpeg, .heic, .webP, .gif, .bmp, .tiff]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if !model.setRewardBackground(from: url) {
+            NSSound.beep()
+        }
     }
 
     private func colorSwatch(_ hex: String) -> some View {

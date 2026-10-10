@@ -7,7 +7,7 @@ enum Metrics {
     static let fallbackWindow = NSSize(width: 216, height: 216)
     static let maxWidget = NSSize(width: 420, height: 420)
     static let bubble: CGFloat = 64
-    static let settings = NSSize(width: 500, height: 620)
+    static let settings = NSSize(width: 500, height: 720)
     static let stats = NSSize(width: 540, height: 680)
 
     /// 主界面卡片边长，按当前屏幕的物理尺寸换算成约 4 厘米。

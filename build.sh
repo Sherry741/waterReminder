@@ -31,6 +31,7 @@ swiftc -swift-version 5 -O -sdk "$SDK" \
 
 cp Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp Resources/default-reward-bg.jpg "$APP/Contents/Resources/default-reward-bg.jpg"
 codesign --force --sign - "$APP"
 xattr -cr "$APP" || true
 echo "Built $(pwd)/$APP"

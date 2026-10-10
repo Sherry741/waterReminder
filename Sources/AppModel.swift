@@ -15,6 +15,17 @@ struct DayStat: Identifiable, Equatable {
     var ml: Int
 }
 
+enum Celebration: Equatable {
+    case none
+    case sip(ml: Int)
+    case goal(ml: Int)
+
+    var isActive: Bool {
+        if case .none = self { return false }
+        return true
+    }
+}
+
 struct SoundOption: Identifiable, Equatable {
     var id: String { name }
     var name: String
@@ -38,6 +49,7 @@ struct Settings: Codable, Equatable {
     var bubbleY: Double?
     /// 1 是旧的大窗口，2 起按约 4 厘米的主界面保存尺寸。
     var layoutVersion: Int
+    var rewardBackgroundFile: String?
 
     init(
         intervalMinutes: Int = 45,
@@ -54,7 +66,8 @@ struct Settings: Codable, Equatable {
         collapsed: Bool = false,
         bubbleX: Double? = nil,
         bubbleY: Double? = nil,
-        layoutVersion: Int = 2
+        layoutVersion: Int = 2,
+        rewardBackgroundFile: String? = nil
     ) {
         self.intervalMinutes = intervalMinutes
         self.message = message
@@ -71,6 +84,7 @@ struct Settings: Codable, Equatable {
         self.bubbleX = bubbleX
         self.bubbleY = bubbleY
         self.layoutVersion = layoutVersion
+        self.rewardBackgroundFile = rewardBackgroundFile
     }
 
     init(from decoder: Decoder) throws {
@@ -90,6 +104,7 @@ struct Settings: Codable, Equatable {
         bubbleX = try container.decodeIfPresent(Double.self, forKey: .bubbleX)
         bubbleY = try container.decodeIfPresent(Double.self, forKey: .bubbleY)
         layoutVersion = try container.decodeIfPresent(Int.self, forKey: .layoutVersion) ?? 1
+        rewardBackgroundFile = try container.decodeIfPresent(String.self, forKey: .rewardBackgroundFile)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -109,6 +124,7 @@ struct Settings: Codable, Equatable {
         try container.encodeIfPresent(bubbleX, forKey: .bubbleX)
         try container.encodeIfPresent(bubbleY, forKey: .bubbleY)
         try container.encode(layoutVersion, forKey: .layoutVersion)
+        try container.encodeIfPresent(rewardBackgroundFile, forKey: .rewardBackgroundFile)
     }
 
     func clamped() -> Settings {
@@ -128,6 +144,7 @@ struct Settings: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case intervalMinutes, message, colorHex, soundName, cupMl, dailyGoalMl, paused
         case windowX, windowY, windowWidth, windowHeight, collapsed, bubbleX, bubbleY, layoutVersion
+        case rewardBackgroundFile
     }
 }
 
@@ -144,6 +161,8 @@ final class AppModel: ObservableObject {
     @Published var nextReminder: Date
     @Published var isReminding = false
     @Published var alertFlash = false
+    @Published var celebration: Celebration = .none
+    @Published var rewardBackground: NSImage?
 
     var lastAck: Date
     var lastSoundAt: Date?
@@ -189,6 +208,7 @@ final class AppModel: ObservableObject {
         lastAck = now
         nextReminder = now.addingTimeInterval(TimeInterval(initial.intervalMinutes * 60))
         load()
+        reloadRewardBackground()
         if startTimer {
             startLoop()
         }
@@ -392,6 +412,91 @@ final class AppModel: ObservableObject {
         save()
     }
 
+    func setRewardBackground(from source: URL) -> Bool {
+        guard let image = NSImage(contentsOf: source) else { return false }
+        let directory = storeURL.deletingLastPathComponent()
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            removeRewardBackgroundFile()
+            let dest = directory.appendingPathComponent("reward-bg.jpg")
+            if let data = Self.compressedJPEG(from: image) {
+                try data.write(to: dest, options: .atomic)
+            } else {
+                try FileManager.default.copyItem(at: source, to: dest)
+            }
+            settings.rewardBackgroundFile = dest.lastPathComponent
+            rewardBackground = NSImage(contentsOf: dest) ?? image
+            save()
+            return true
+        } catch {
+            NSLog("保存奖励背景失败: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    var hasCustomRewardBackground: Bool {
+        settings.rewardBackgroundFile != nil
+    }
+
+    func clearRewardBackground() {
+        removeRewardBackgroundFile()
+        settings.rewardBackgroundFile = nil
+        rewardBackground = Self.bundledRewardBackground()
+        save()
+    }
+
+    func previewCelebration() {
+        celebration = .sip(ml: settings.cupMl)
+        onReveal?()
+        playCelebrationSound(forGoal: false)
+    }
+
+    var rewardBackgroundURL: URL? {
+        guard let name = settings.rewardBackgroundFile, !name.isEmpty else { return nil }
+        return storeURL.deletingLastPathComponent().appendingPathComponent(name)
+    }
+
+    static var bundledRewardBackgroundURL: URL? {
+        Bundle.main.url(forResource: "default-reward-bg", withExtension: "jpg")
+    }
+
+    static func bundledRewardBackground() -> NSImage? {
+        guard let url = bundledRewardBackgroundURL else { return nil }
+        return NSImage(contentsOf: url)
+    }
+
+    private func reloadRewardBackground() {
+        if let url = rewardBackgroundURL, FileManager.default.fileExists(atPath: url.path) {
+            rewardBackground = NSImage(contentsOf: url) ?? Self.bundledRewardBackground()
+            return
+        }
+        if settings.rewardBackgroundFile != nil {
+            settings.rewardBackgroundFile = nil
+        }
+        rewardBackground = Self.bundledRewardBackground()
+    }
+
+    private func removeRewardBackgroundFile() {
+        if let url = rewardBackgroundURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    private static func compressedJPEG(from image: NSImage, maxSide: CGFloat = 1280) -> Data? {
+        guard let raw = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: raw) else { return nil }
+        let longest = max(bitmap.size.width, bitmap.size.height)
+        let scale = longest > maxSide ? maxSide / longest : 1
+        let size = NSSize(width: bitmap.size.width * scale, height: bitmap.size.height * scale)
+        let scaled = NSImage(size: size)
+        scaled.lockFocus()
+        image.draw(in: NSRect(origin: .zero, size: size), from: .zero, operation: .copy, fraction: 1)
+        scaled.unlockFocus()
+        guard let out = scaled.tiffRepresentation,
+              let outRep = NSBitmapImageRep(data: out) else { return nil }
+        return outRep.representation(using: .jpeg, properties: [.compressionFactor: 0.78])
+    }
+
     func setCup(_ ml: Int) {
         let next = min(2000, max(50, ml))
         guard next != settings.cupMl else { return }
@@ -439,6 +544,7 @@ final class AppModel: ObservableObject {
     }
 
     func logDrink(ml: Int? = nil, at date: Date = Date(), resetsReminder: Bool = true) {
+        let before = self.ml(on: date)
         let amount = min(2000, max(1, ml ?? settings.cupMl))
         drinks.append(DrinkEntry(id: UUID(), date: date, ml: amount))
         _ = pruneOldDrinks()
@@ -450,8 +556,29 @@ final class AppModel: ObservableObject {
                 alertFlash = false
             }
         }
+        let after = self.ml(on: date)
+        let reachedGoal = settings.dailyGoalMl > 0 && before < settings.dailyGoalMl && after >= settings.dailyGoalMl
+        celebration = reachedGoal ? .goal(ml: amount) : .sip(ml: amount)
+        onReveal?()
+        playCelebrationSound(forGoal: reachedGoal)
         save()
         evaluateReminder()
+    }
+
+    func clearCelebration() {
+        celebration = .none
+    }
+
+    private func playCelebrationSound(forGoal: Bool) {
+        let name = forGoal ? "Hero" : "Pop"
+        if let soundHook {
+            soundHook(name)
+            return
+        }
+        if let sound = NSSound(named: NSSound.Name(name)) ?? NSSound(named: NSSound.Name("Glass")) {
+            sound.stop()
+            sound.play()
+        }
     }
 
     func deleteDrink(id: UUID) {

@@ -42,6 +42,17 @@ struct FloatingRootView: View {
                 expandedCard
                     .padding(Metrics.shadowInset)
             }
+            if model.celebration.isActive {
+                RewardOverlay(
+                    theme: theme,
+                    celebration: model.celebration,
+                    backgroundImage: model.rewardBackground
+                ) {
+                    model.clearCelebration()
+                }
+                .id(model.drinks.count)
+                .padding(model.settings.collapsed ? 8 : Metrics.shadowInset)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
@@ -473,6 +484,120 @@ struct GlassCup: View {
         if alerting {
             context.stroke(outline, with: .color(theme.opacity(0.9)), lineWidth: 3)
             context.stroke(Path(ellipseIn: rimRect), with: .color(theme.opacity(0.9)), lineWidth: 2)
+        }
+    }
+}
+
+private struct RewardParticle: Identifiable {
+    let id = UUID()
+    let emoji: String
+    let start: CGSize
+    let end: CGSize
+    let delay: Double
+}
+
+/// 达标后的撒花奖励，叠在悬浮窗上。
+private struct RewardOverlay: View {
+    let theme: Color
+    let celebration: Celebration
+    var backgroundImage: NSImage?
+    var onFinished: () -> Void
+
+    @State private var burst = false
+    @State private var particles: [RewardParticle] = []
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                if let backgroundImage {
+                    Image(nsImage: backgroundImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.15), Color.black.opacity(0.45)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                } else {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(theme.opacity(burst ? 0.92 : 0.55))
+                }
+                ForEach(particles) { particle in
+                    Text(particle.emoji)
+                        .font(.system(size: 14))
+                        .offset(burst ? particle.end : particle.start)
+                        .opacity(burst ? 0 : 1)
+                        .scaleEffect(burst ? 1.15 : 0.3)
+                        .animation(
+                            .easeOut(duration: 1.15).delay(particle.delay),
+                            value: burst
+                        )
+                }
+                VStack(spacing: 4) {
+                    Image(systemName: isGoal ? "checkmark.seal.fill" : "drop.fill")
+                        .font(.system(size: isGoal ? 28 : 26, weight: .bold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.white)
+                        .scaleEffect(burst ? 1 : 0.3)
+                    Text(title)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .opacity(burst ? 1 : 0)
+                    Text(subtitle)
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .opacity(burst ? 1 : 0)
+                }
+                .animation(.spring(response: 0.42, dampingFraction: 0.62), value: burst)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .onAppear {
+                particles = Self.makeParticles(in: geo.size)
+                withAnimation(.easeOut(duration: 0.25)) {
+                    burst = true
+                }
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 2_600_000_000)
+                    onFinished()
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var isGoal: Bool {
+        if case .goal = celebration { return true }
+        return false
+    }
+
+    private var title: String {
+        isGoal ? "今日喝够啦" : "干得漂亮"
+    }
+
+    private var subtitle: String {
+        switch celebration {
+        case .goal(let ml):
+            return "+\(ml) ml · 目标达成"
+        case .sip(let ml):
+            return "+\(ml) ml"
+        case .none:
+            return ""
+        }
+    }
+
+    private static func makeParticles(in size: CGSize) -> [RewardParticle] {
+        let emojis = ["💧", "✨", "⭐️", "🎉", "💦"]
+        return (0..<16).map { index in
+            let angle = Double(index) / 16.0 * .pi * 2
+            let radius = min(size.width, size.height) * 0.48
+            return RewardParticle(
+                emoji: emojis[index % emojis.count],
+                start: .zero,
+                end: CGSize(width: cos(angle) * radius, height: sin(angle) * radius * 0.85),
+                delay: Double(index % 5) * 0.04
+            )
         }
     }
 }
